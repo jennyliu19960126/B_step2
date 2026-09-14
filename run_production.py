@@ -8,6 +8,7 @@ The production configuration remains untouched.  Run this script with:
 from __future__ import annotations
 
 import json
+import argparse
 import os
 import platform
 import sqlite3
@@ -27,11 +28,13 @@ from core_func import GpLearnStock
 
 
 TEST_PARAMETERS = {
-    "population_size": 10000,
+    "population_multiplier": 50,
+    "min_raw_ic": 0.01,
     "hall_of_fame": 1000,
     "n_components": 10,
     # Warm start evaluates 5x population, then eight evolutionary generations.
     "generations": 8,
+    "stopping_criteria": 2.0,
     "tournament_size": 1000,
     "init_depth": [1, 4],
     "n_jobs": 80,
@@ -39,7 +42,7 @@ TEST_PARAMETERS = {
     "low_memory": False,
     # The framework's detailed per-program file logger remains enabled.
     "verbose": 0,
-    # Every generated candidate is scored before its numerical IC evaluation.
+    # Score only candidates passing the numerical IC gate.
     "llm_interpretability_enabled": True,
     "llm_interpretability_weight": 0.03,
 }
@@ -53,6 +56,14 @@ def _write_json(path: Path, payload: dict) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Eight-generation GP production run")
+    parser.add_argument("--population-multiplier", type=int, default=50)
+    parser.add_argument("--min-raw-ic", type=float, default=0.01)
+    parser.add_argument("--penalty-weight", type=float, choices=(0.01, 0.03), default=0.03)
+    args = parser.parse_args()
+    TEST_PARAMETERS.update(population_multiplier=args.population_multiplier,
+                           min_raw_ic=args.min_raw_ic,
+                           llm_interpretability_weight=args.penalty_weight)
     started_at = time.strftime("%Y-%m-%d %H:%M:%S %Z")
     start = time.time()
 
@@ -92,7 +103,7 @@ def main() -> int:
     }
     _write_json(manifest_path, manifest)
 
-    assert gp.X.shape[0] == 32 and gp.X.shape[1] == 249
+    assert gp.X.shape[0] == 32 and gp.X.shape[1] == len(gp.feature_names)
     assert gp.y.shape == (32, gp.X.shape[2])
     from core_func.constant.params import DATES_quar, feature_tensor_path
     assert DATES_quar[0] == "2017-03-31" and DATES_quar[-1] == "2024-12-31"
@@ -100,12 +111,16 @@ def main() -> int:
     allowed = gp.fitness_cache[1] == 0
     coverage = (np.isfinite(gp.X) & allowed[:, None, :]).sum(axis=2) / allowed.sum(axis=1)[:, None]
     assert np.isfinite(coverage).all() and (coverage >= .9).all(), "Input coverage preflight failed"
+    manifest["resolved_population_size"] = gp.population_size
+    manifest["initial_candidate_count"] = 5 * gp.population_size
+    manifest["n_base"] = gp.feature_origins_.count("base")
+    manifest["p"] = gp.feature_origins_.count("step1")
     manifest["minimum_input_coverage"] = float(coverage.min())
     manifest["input_tensor"] = str(feature_tensor_path)
     manifest["training_start"] = DATES_quar[0]
     manifest["training_end"] = DATES_quar[-1]
     manifest["possible_ic_quarters"] = 24
-    manifest["fitness_formula"] = "abs(mean(signed quarterly IC)) - 0.03 * (1 - LLM_score / 10)"
+    manifest["fitness_formula"] = f"abs(mean(signed quarterly IC)) - {gp.llm_interpretability_weight} * (1 - LLM_score / 10)"
     _write_json(manifest_path, manifest)
     gp.learn_formulation()
 
@@ -142,13 +157,13 @@ def main() -> int:
                 "SELECT COUNT(*) FROM llm_interpretability_audit"
             ).fetchone()[0]
         expected_candidate_evaluations = (
-            TEST_PARAMETERS["population_size"] * 5
-            + TEST_PARAMETERS["population_size"] * TEST_PARAMETERS["generations"]
+            gp.population_size * 5
+            + gp.population_size * TEST_PARAMETERS["generations"]
         )
         llm_audit = {
             "expected_candidate_evaluations": expected_candidate_evaluations,
             "candidate_scoring_attempts": candidate_scoring_attempts,
-            "all_candidates_audited": candidate_scoring_attempts == expected_candidate_evaluations,
+            "note": "Low/invalid raw IC candidates skip LLM audit; scoring attempts need not equal evaluations",
             "unique_scored_expressions": count,
             "minimum_score": minimum,
             "average_score": average,

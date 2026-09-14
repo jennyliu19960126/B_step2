@@ -1,5 +1,7 @@
 # 财务因子遗传规划框架
 
+Current population sizing, hard IC gate and base-only output policy: [evolution parameters](docs/evolution_parameters.md). These settings supersede the historical fixed-population examples below.
+
 本项目使用季度财务特征构造遗传规划（Genetic Programming，GP）表达式，并以“季频原始 Pearson IC + DeepSeek 可解释性惩罚”选择候选因子。
 
 当前阶段的首要目标是先跑通以下最小闭环：

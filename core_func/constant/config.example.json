@@ -74,5 +74,7 @@
   ],
   "ic_corr_cut": 0.7,
   "index_name": "000905.SH.SZ",
-  "signal_filter_max_num": 100
+  "signal_filter_max_num": 100,
+  "population_multiplier": 50,
+  "min_raw_ic": 0.01
 }

@@ -23,6 +23,7 @@ from .functions import _function_map, _Function, cs_sigmoid as sigmoid
 from .ts_functions import _extra_function_map
 
 from utility.logger import get_logger
+from utility.evolution_policy import passes_raw_ic
 
 all_cal_dictionary = {**_function_map, **_extra_function_map}
 __all__ = ['SymbolicRegressor', 'SymbolicClassifier', 'SymbolicTransformer']
@@ -396,6 +397,7 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                       'parent_idx': parent_index,
                       'parent_nodes': []}
         program.parents = genome
+        program.min_raw_ic = params.get("min_raw_ic")
         # Draw samples, using sample weights, and then fit
         if sample_weight is None:
             curr_sample_weight = np.ones(n_dates)
@@ -408,10 +410,10 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
             # ReplacementV2
             if self.replacement == 2:
                 if program.parents is not None:
-                    if program.raw_fitness_ < parents[program.parents['parent_idx']].raw_fitness_ and program.raw_fitness_ < parents[index_in_population].raw_fitness_:
-                        program = parents[index_in_population]
+                    if program.raw_fitness_ < parents[program.parents['parent_idx']].raw_fitness_ and program.raw_fitness_ < parents[index_in_population % len(parents)].raw_fitness_:
+                        program = parents[index_in_population % len(parents)]
                         genome = {'method': 'Reproduction',
-                                  'parent_idx': index_in_population,
+                                  'parent_idx': index_in_population % len(parents),
                                   'parent_nodes': []}
                         program.parents = genome
 
@@ -481,6 +483,14 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                 population.append(program)
         return population
 
+    def _filter_population(self, population, generation):
+        threshold = getattr(self, "min_raw_ic", None)
+        retained = [program for program in population if passes_raw_ic(program, threshold)]
+        self.logger.info(f"Gen{generation} raw IC gate: generated={len(population)} retained={len(retained)} threshold={threshold}")
+        if not retained:
+            raise RuntimeError(f"Gen{generation}: no valid candidates survive min_raw_ic={threshold}")
+        return retained
+
     def _init_population(self, X, y, sample_weight, params, random_state, need_parallel):
         warm_start_generation = 0
         if self.warm_start == 0 and not hasattr(self, '_programs'):
@@ -503,6 +513,7 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                 index_range=index_range
             ).result()
 
+            raw_population = self._filter_population(raw_population, 0)
             fitness = [program.raw_fitness_ for program in raw_population]
             length = [program.length_ for program in raw_population]
 
@@ -513,7 +524,7 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                 program.fitness_ = program.fitness(parsimony_coefficient)
             
             fitness_list = [p.fitness_ for p in raw_population]
-            idx_list = list(range(size))
+            idx_list = list(range(len(raw_population)))
             idx_by_fitness = [i for _,i in sorted(zip(fitness_list, idx_list), reverse=True)]
             slt_idx = idx_by_fitness[:self.population_size]
             if self.corr_penalty:
@@ -522,7 +533,7 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                 ic_array = np.transpose(ic_list)  # T x N
                 ic_array[np.isnan(ic_array)] = 0
                 ic_array[np.isinf(ic_array)] = 0
-                pca = PCA(n_components=5)
+                pca = PCA(n_components=min(5, *ic_array.shape))
                 pca.fit(ic_array)
                 ic_5pc = pca.transform(ic_array)
                 self.ic_5pc = [ic_5pc]
@@ -605,8 +616,8 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                 if self.corr_penalty:
                     # penalize fitness with R2
                     if self.ic_5pc is not None:
-                        fitness_series = pd.Series(0, index=range(self.population_size))
-                        r2_series = pd.Series(0, index=range(self.population_size))
+                        fitness_series = pd.Series(0, index=range(len(parents)))
+                        r2_series = pd.Series(0, index=range(len(parents)))
                         for i, program in enumerate(parents):
                             ic_arr = program.ic_arr.copy()
                             ic_arr = ic_arr.fillna(0)
@@ -636,10 +647,13 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                     index_range=index_range
                 ).result()
 
+            if self.replacement != 3 or parents is None:
+                population = self._filter_population(population, gen)
+
             # ReplacementV3
             fitness = []
             if self.replacement == 3 and parents is not None:
-                combined_population = parents + population
+                combined_population = self._filter_population(parents + population, gen)
                 fitness = [program.raw_fitness_ for program in combined_population]
                 length = [program.length_ for program in combined_population]
 
@@ -676,7 +690,7 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                 ic_array = np.transpose(ic_list)  # T x N
                 ic_array[np.isnan(ic_array)] = 0
                 ic_array[np.isinf(ic_array)] = 0
-                pca = PCA(n_components=5)
+                pca = PCA(n_components=min(5, *ic_array.shape))
                 pca.fit(ic_array)
                 ic_5pc = pca.transform(ic_array)
                 self.ic_5pc.append(ic_5pc)
@@ -705,7 +719,7 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                                 if 'idx' in idx:
                                     indices.append(program.parents[idx])
                     indices = set(indices)
-                    for idx in range(self.population_size):
+                    for idx in range(len(self._programs[old_gen - 1])):
                         if idx not in indices:
                             self._programs[old_gen - 1][idx] = None
             elif gen > 0:
@@ -761,9 +775,10 @@ class BaseSymbolic(BaseEstimator, metaclass=ABCMeta):
                         (evaluation.shape[0], 1))
                 correlations = np.abs(np.corrcoef(
                     np.nan_to_num(correlations, nan=0.)))
+            correlations = np.atleast_2d(correlations)
             np.fill_diagonal(correlations, 0.)
-            components = list(range(self.hall_of_fame))
-            indices = list(range(self.hall_of_fame))
+            components = list(range(len(hall_of_fame)))
+            indices = list(range(len(hall_of_fame)))
             # Iteratively remove least fit individual of most correlated pair
             while len(components) > self.n_components:
                 most_correlated = np.unravel_index(

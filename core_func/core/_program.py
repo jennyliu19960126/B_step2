@@ -299,7 +299,9 @@ class _Program(object):
         self.llm_interpretability_score_ = None
         self.llm_interpretability_penalty_ = 0.0
         penalty = 0.0
-        if self.llm_interpretability['cache_path']:
+        threshold = getattr(self, 'min_raw_ic', None)
+        eligible = np.isfinite(raw_fitness) and (threshold is None or raw_fitness >= threshold)
+        if eligible and self.llm_interpretability['cache_path']:
             score, penalty = interpretability_penalty(
                 str(self), raw_fitness, **self.llm_interpretability)
             self.llm_interpretability_score_ = score
