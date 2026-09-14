@@ -1,0 +1,78 @@
+{
+  "dir_kw": "set_01",
+  "factor_name_prefix": "pop1w_",
+  "fitness_metric": "IC",
+  "llm_interpretability_enabled": true,
+  "llm_interpretability_api_key": "",
+  "llm_interpretability_min_ic": 0.02,
+  "llm_interpretability_weight": 0.03,
+  "llm_interpretability_model": "deepseek-flash",
+  "llm_interpretability_base_url": "https://api.deepseek.com",
+  "llm_interpretability_timeout": 15,
+  "fitness_threshold": 0,
+  "gen_metric_list": [
+    "IC"
+  ],
+  "k_cs_func": 10,
+  "generations": 8,
+  "population_size": 10000,
+  "tournament_size": 1000,
+  "hall_of_fame": 1000,
+  "init_depth": [
+    1,
+    4
+  ],
+  "init_method": "half and half",
+  "stopping_criteria": 1,
+  "const_range": [
+    -1,
+    1
+  ],
+  "p_crossover": 0.4,
+  "p_hoist_mutation": 0.295,
+  "p_subtree_mutation": 0.01,
+  "p_point_mutation": 0.295,
+  "p_point_replace": 0.4,
+  "parsimony_coefficient": 0.0,
+  "ic_cut_dict": {
+    "IC": 0.02,
+    "neu_IC": 0.005,
+    "long_only_neu_IC": 0
+  },
+  "ic_cut_dict_quar": {
+    "IC": 0.01,
+    "neu_IC": 0.02,
+    "long_only_neu_IC": 0
+  },
+  "replacement": 0,
+  "corr_penalty": false,
+  "gamma": 0.5,
+  "save_ic_array": false,
+  "ic_sort_metric": "neu_IC",
+  "random_state": null,
+  "n_jobs": 80,
+  "n_jobs_step3": 80,
+  "n_jobs_step4": 80,
+  "n_components": 10,
+  "max_samples": 1.0,
+  "warm_start": 1,
+  "low_memory": false,
+  "verbose": 0,
+  "date_capacity": 8000,
+  "symbol_capacity": 7000,
+  "h_hori": 5,
+  "portf_num": 10,
+  "factor_rate": 0.9,
+  "points_of_year": 250,
+  "mp_mode": true,
+  "use_mono": false,
+  "version_for_batch_merge": "v20251213",
+  "ic_cut_list": [
+    0.01,
+    0.02,
+    0.03
+  ],
+  "ic_corr_cut": 0.7,
+  "index_name": "000905.SH.SZ",
+  "signal_filter_max_num": 100
+}
