@@ -26,7 +26,7 @@ def feature_origins(metadata):
                 group = row.get("source_group", "")
                 if group in ("base", "gate1"):
                     origin = "base"
-                elif group == "step1" or group.startswith(("x20_", "x40_", "x60_")):
+                elif group == "step1" or group.startswith(("x20_", "x40_", "x60_", "x100_")):
                     origin = "step1"
             origins.append(origin)
     if len(origins) != len(names) or any(x not in ("base", "step1") for x in origins):

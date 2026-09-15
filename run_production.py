@@ -37,14 +37,14 @@ TEST_PARAMETERS = {
     "stopping_criteria": 2.0,
     "tournament_size": 1000,
     "init_depth": [1, 4],
-    "n_jobs": 80,
+    "n_jobs": 40,
     "random_state": 20260908,
     "low_memory": False,
     # The framework's detailed per-program file logger remains enabled.
     "verbose": 0,
     # Score only candidates passing the numerical IC gate.
     "llm_interpretability_enabled": True,
-    "llm_interpretability_weight": 0.03,
+    "llm_interpretability_weight": 0.01,
 }
 
 
@@ -59,11 +59,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Eight-generation GP production run")
     parser.add_argument("--population-multiplier", type=int, default=50)
     parser.add_argument("--min-raw-ic", type=float, default=0.01)
-    parser.add_argument("--penalty-weight", type=float, choices=(0.01, 0.03), default=0.03)
+    parser.add_argument("--penalty-weight", type=float, choices=(0.01, 0.03), default=0.01)
+    parser.add_argument("--n-jobs", type=int, choices=range(1, 101), default=40)
     args = parser.parse_args()
     TEST_PARAMETERS.update(population_multiplier=args.population_multiplier,
                            min_raw_ic=args.min_raw_ic,
-                           llm_interpretability_weight=args.penalty_weight)
+                           llm_interpretability_weight=args.penalty_weight,
+                           n_jobs=args.n_jobs)
     started_at = time.strftime("%Y-%m-%d %H:%M:%S %Z")
     start = time.time()
 

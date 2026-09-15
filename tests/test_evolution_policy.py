@@ -31,6 +31,8 @@ class PolicyTests(unittest.TestCase):
         meta = {"feature_names": ["a", "b"], "source_mapping": [
             {"source_group": "gate1"}, {"source_group": "x20_ic0.02_corr0.8"}]}
         self.assertEqual(feature_origins(meta), ["base", "step1"])
+        meta["source_mapping"][1]["source_group"] = "x100_ic0.01_corr0.8"
+        self.assertEqual(feature_origins(meta), ["base", "step1"])
         meta["source_mapping"][1]["source_group"] = "unknown"
         with self.assertRaises(ValueError): feature_origins(meta)
 

@@ -17,7 +17,7 @@ The hard IC gate runs before LLM scoring. Rejected candidates never enter the ne
 
 ## Input provenance and base-only exclusion
 
-Input metadata must supply `feature_origins`, an aligned list of `base`/`step1`, or an aligned `source_mapping`. Mapping entries can explicitly specify `origin`. Existing source groups `gate1`/`base` map to base; `step1` and the existing `x20_`, `x40_`, `x60_` groups map to Step1. Unknown provenance raises an error instead of silently counting factors.
+Input metadata must supply `feature_origins`, an aligned list of `base`/`step1`, or an aligned `source_mapping`. Mapping entries can explicitly specify `origin`. Existing source groups `gate1`/`base` map to base; `step1` and the existing `x20_`, `x40_`, `x60_`, `x100_` groups map to Step1. Unknown provenance raises an error instead of silently counting factors.
 
 Expressions are classified using integer terminal indices from `formulation_stack`. Float constants are not feature indices. A derived Step1 terminal remains Step1 even if its own underlying formula uses base financial fields.
 
@@ -41,3 +41,23 @@ Gen0 is the initialization pool and is not directly included in the historical c
 ```
 
 The integration smoke test runs the real evolutionary loop with synthetic candidates, including a one-survivor pool, and verifies independent four-generation versus eight-generation-prefix equality. It does not call an LLM or perform a production data training run.
+
+## Prepared 24-run batch
+
+`configs/experiment_24.json` fixes six cleaned inputs, multipliers 20/50, raw IC gates 0/0.01, and penalty 0.01. The batch uses two simultaneous runs with 40 workers each, four threads per worker, seed 20260908, eight generations and fivefold initialization. It evaluates 4,320,680 candidates if all runs complete. The source directories are represented by 334/249/505/305/622/359 input features, including 229 base features each.
+
+On 2026-09-15 all six tensors were checked against the actual 32-quarter/5762-stock training axes and restriction mask. All features passed 90% coverage in every quarter; minimum coverage was 0.9985867151221481, with no infinite values or duplicate feature names. Each production child repeats the numerical input preflight before training. API key presence and shared cache existence were checked; no API request was made.
+
+From `/data/fund_agent/B_step2`, inspect the plan without training:
+
+```bash
+/data/miniconda3/envs/py310/bin/python run_experiment_24.py
+```
+
+Start manually when ready (the output directory must be new):
+
+```bash
+/data/miniconda3/envs/py310/bin/python run_experiment_24.py --execute --output-root runs/grid24_20260915
+```
+
+This command stays in the foreground; use an existing persistent terminal session for a long run. Each job writes `launcher.log`; the batch writes `plan.json` and `batch_status.json`. Failures are recorded and other combinations continue. Existing batch directories are refused, preventing accidental overwrite. This launcher runs GP and its 4/8-generation result exports; external correlation filtering is a subsequent step.

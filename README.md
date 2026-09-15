@@ -416,3 +416,5 @@ Numerical IC is evaluated before LLM scoring. Invalid/nonfinite IC skips the API
 ## Git checkout setup
 
 Copy `core_func/constant/config.example.json` to `core_func/constant/config.json` and set `DEEPSEEK_API_KEY` in the environment. The local config, input artifacts and run outputs are excluded from Git. Provide compatible input data and metadata before running.
+
+Prepared 24-run batch: `run_experiment_24.py` prints and validates the plan; `--execute --output-root runs/<new_batch_name>` explicitly starts training. See [batch settings](docs/evolution_parameters.md#prepared-24-run-batch).
