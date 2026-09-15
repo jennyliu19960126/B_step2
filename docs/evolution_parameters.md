@@ -44,7 +44,7 @@ The integration smoke test runs the real evolutionary loop with synthetic candid
 
 ## Prepared 24-run batch
 
-`configs/experiment_24.json` fixes six cleaned inputs, multipliers 20/50, raw IC gates 0/0.01, and penalty 0.01. The batch uses two simultaneous runs with 40 workers each, four threads per worker, seed 20260908, eight generations and fivefold initialization. It evaluates 4,320,680 candidates if all runs complete. The source directories are represented by 334/249/505/305/622/359 input features, including 229 base features each.
+`configs/experiment_24.json` fixes six cleaned inputs, multipliers 20/50, raw IC gates 0/0.01, and penalty 0.01. The batch uses three simultaneous runs with 40 workers each (120 workers total, explicitly requested), four threads per worker, seed 20260908, eight generations and fivefold initialization. It evaluates 4,320,680 candidates if all runs complete. The source directories are represented by 334/249/505/305/622/359 input features, including 229 base features each.
 
 On 2026-09-15 all six tensors were checked against the actual 32-quarter/5762-stock training axes and restriction mask. All features passed 90% coverage in every quarter; minimum coverage was 0.9985867151221481, with no infinite values or duplicate feature names. Each production child repeats the numerical input preflight before training. API key presence and shared cache existence were checked; no API request was made.
 

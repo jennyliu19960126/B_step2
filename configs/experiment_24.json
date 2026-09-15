@@ -2,7 +2,7 @@
   "generations": 8,
   "penalty_weight": 0.01,
   "random_state": 20260908,
-  "concurrent_runs": 2,
+  "concurrent_runs": 3,
   "workers_per_run": 40,
   "threads_per_worker": 4,
   "runs": [
