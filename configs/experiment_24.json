@@ -270,5 +270,7 @@
       "population_size": 17950,
       "initial_candidates": 89750
     }
-  ]
+  ],
+  "filter_ic_cut": 0.04,
+  "filter_corr_cut": 0.6
 }

@@ -1,4 +1,5 @@
 import os
+import ast
 import sys
 import time
 import traceback
@@ -47,7 +48,7 @@ class FactorReplicate:
         self.logger.info(f"X.shape={self.X.shape}")
     
     def execute_formulation(self, formulation_str):
-        formulation_list = eval(formulation_str)
+        formulation_list = ast.literal_eval(formulation_str)
         # Check for single-node programs
         node = formulation_list[0]
 

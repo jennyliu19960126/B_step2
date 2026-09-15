@@ -56,7 +56,22 @@ def main():
         completed = False
         if result.returncode == 0 and manifest.exists():
             completed = json.loads(manifest.read_text(encoding="utf-8")).get("status") == "completed"
+        stage = "training"
+        postprocess = None
+        if completed:
+            stage = "postprocess"
+            command = [sys.executable, str(ROOT / "postprocess_run.py"),
+                       "--run-dir", str(target / "backtest/production"),
+                       "--workers", str(plan["workers_per_run"]),
+                       "--ic-cut", str(plan["filter_ic_cut"]),
+                       "--corr-cut", str(plan["filter_corr_cut"])]
+            with open(target / "postprocess.log", "w", encoding="utf-8") as log:
+                result = subprocess.run(command, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
+            path = target / "backtest/production/postprocess/summary.json"
+            postprocess = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+            completed = result.returncode == 0 and postprocess is not None and postprocess.get("status") == "completed"
         return {"id": row["id"], "returncode": result.returncode,
+                "stage": "completed" if completed else stage, "postprocess": postprocess,
                 "status": "completed" if completed else "failed", "output": str(target)}
     statuses = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=plan["concurrent_runs"]) as pool:
